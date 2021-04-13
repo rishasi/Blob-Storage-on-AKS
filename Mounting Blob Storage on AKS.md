@@ -1,6 +1,8 @@
 # Mounting Blob Storage on AKS
 
+[TOC]
 
+---
 
 ## Theory
 
@@ -36,8 +38,6 @@ Blob CSI Driver allows Kubernetes to access Azure Storage through one of the fol
 
 ---
 
-
-
 ## Version Compatibility
 
 https://github.com/kubernetes-sigs/blob-csi-driver#container-images--kubernetes-compatibility
@@ -56,8 +56,6 @@ https://github.com/kubernetes-sigs/blob-csi-driver#container-images--kubernetes-
 There are some important topics for Parameters, Pre-requisites, etc, for the CSI Driver, which can be looked upon in the following link: https://github.com/kubernetes-sigs/blob-csi-driver#driver-parameters
 
 ---
-
-
 
 ## Installation via *kubectl*:
 
@@ -90,7 +88,7 @@ Have a look at the resources being created:
 
 - ClusterRole and Bindings
 - Service Accounts
-- CSI Driver Storage resouce
+- CSI Driver Storage resource
 - Deployments: blob-controller
 - DaemonSet: blob-node
 
@@ -142,8 +140,6 @@ rishabh@Azure:~$
 ## No resource left.
 ```
 
-
-
 If there are resources remaining in the cluster, which have not been removed properly, the individual resources from the above list can be removed manually using ```kubectl delete``` command.
 
 ### Installing latest version (master)
@@ -186,8 +182,6 @@ deployment.apps/csi-blob-controller   2/2     2            2           43s
 replicaset.apps/csi-blob-controller-ddb5567d4    2         2         2       43s
 ```
 
-
-
 #### To check the version installed
 
 check the ```blob``` container's image in the csi-blob-controller Pod/Deployment:
@@ -207,8 +201,6 @@ Namespace:              kube-system
 
 ---
 
-
-
 ## Usage
 
 Now that we have installed the driver, we can use it to mount Blob Storage on Pods.
@@ -226,11 +218,13 @@ In Dynamic Provisioning, a Persistent Volume (PV) is not present beforehand, and
 
 > Pod >> PVC >> PV (which is automatically created by SC)
 
- 
+---
 
-### Dynamic Provisioning: Creating new Storage Account using CSI Driver
+### <u>Dynamic Provisioning</u>
 
-#### Create Storage Class
+#### Option 1: Creating new Storage Account using CSI Driver
+
+##### Create Storage Class
 
 ```bash
 # rishabh@Azure:~$ kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/storageclass-blobfuse.yaml
@@ -258,7 +252,7 @@ mountOptions:
   - -o negative_timeout=120
 ```
 
-#### Create Persistent Volume Claim
+##### Create Persistent Volume Claim
 
 ```bash
 # rishabh@Azure:~$ cat pvc.yaml
@@ -301,17 +295,13 @@ Events:
 
 You may receive error as above. This is because the Identity associated with the cluster does not have permission over Microsoft.Storage. This is mentioned in the Pre-requisites: 
 
-```
-If cluster identity is Managed Service Identity(MSI), make sure user assigned identity has Contributor role on node resource group
-```
-
-
+> *If cluster identity is Managed Service Identity(MSI), make sure user assigned identity has Contributor role on node resource group*
 
 Since my AKS Cluster is using Managed Identity, I need to provide the required permissions:
 
 ![image-20210413163723138](docs/image/image-20210413163723138.png)
 
-I can go to the Node Resource Group >> Access Control >> Add Role Assignment, and grant the required permissions:
+I can go to the **Node Resource Group >> Access Control >> Add Role Assignment**, and grant the required permissions:
 
 ![image-20210413172625392](docs/image/image-20210413172625392.png)
 
@@ -340,9 +330,7 @@ We can see in the Portal, a new Storage Account is created:
 
 ![image-20210413194614692](docs/image/image-20210413194614692.png)
 
-
-
-#### Using the PVC in a Pod
+##### Using the PVC in a Pod
 
 Now that we have the SC and PVC created, we can create a Pod/Deployment to mount this PVC:
 
@@ -378,6 +366,8 @@ In the Portal, we can see that a file has been added to the Storage Account:
 
 ![image-20210413195524263](docs/image/image-20210413195524263.png)
 
+##### Deleting the resources:
+
 Let us clean the Pod, PVC and SC for other labs.
 
 ```bash
@@ -393,18 +383,18 @@ storageclass.storage.k8s.io "blob" deleted
 
 ---
 
-### Dynamic Provisioning: Using an existing Storage Account
+#### Options 2: Using an existing Storage Account
 
 In this section, we will use an existing Storage Account instead of letting the CSI Driver create one. The Storage Account I will be using is the one which was created in the previous section by the CSI Driver.
 
-#### Create a Secret using the Storage Account Name and the Key.
+##### Create a Secret using the Storage Account Name and the Key.
 
 ```bash
 # rishabh@Azure:~$ kubectl create secret generic azure-secret --from-literal accountname=fuse07e249afa8394b9fbfb --from-literal accountkey="xxxxxxxxxxxxxxxxxxxxNS2uCAU/G3hUmQcdFtfB95C8jhfs1XUsskbaY6hyxxxxxxxxxxxxxxxx" --type=Opaque
 secret/azure-secret created
 ```
 
-#### Creating a Storage Class using the above Secret
+##### Creating a Storage Class using the above Secret
 
 ```bash
 # rishabh@Azure:~$ kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/storageclass-blob-secret.yaml
@@ -428,7 +418,7 @@ parameters:
 
 We can create a PVC and a Pod as done above:
 
-#### Creating a PVC
+##### Creating a PVC
 
 ```bash
 # rishabh@Azure:~$ cat pvc.yaml
@@ -472,7 +462,7 @@ Events:
   Normal  ProvisioningSucceeded  14s   blob.csi.azure.com_aks-agentpool-20474252-vmss000000_d3994115-529e-4097-bcd3-04ff49e4fba4  Successfully provisioned volume pvc-a35ae630-e9bf-48cb-bd70-055f1e1692fb
 ```
 
-#### Creating a Pod to use the above created PVC
+##### Creating a Pod to use the above created PVC
 
 ```bash
 rishabh@Azure:~$ cat pod.yaml
@@ -501,13 +491,11 @@ rishabh@Azure:~$ kubectl apply -f pod.yaml
 pod/nginx-blob created
 ```
 
-
-
 We now have a new PVC, with new file being written into it:
 
 ![image-20210413200943161](docs/image/image-20210413200943161.png)
 
-Deleting the resources:
+##### Deleting the resources:
 
 ```bash
 # rishabh@Azure:~$ kubectl delete -f pod.yaml
@@ -526,9 +514,312 @@ storageclass.storage.k8s.io "blob" deleted
 secret "azure-secret" deleted
 ```
 
-
-
 Instead of creating a new PVC (for the SC) and a Pod to use the PVC, we could have directly created a Storage Class as shown here: https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/statefulset.yaml
 
 ---
 
+### <u>Static Provisioning</u>
+
+#### Option 1: Using Storage Class
+
+##### Creating a Storage Class that uses the existing Container in Storage Account
+
+```bash
+# rishabh@Azure:~/static$ cat sc.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: blob
+provisioner: blob.csi.azure.com
+parameters:
+  resourceGroup: mc_aks-rg_aks-cluster_eastus
+  storageAccount: fuse07e249afa8394b9fbfb  # cross subscription is not supported
+  containerName: static-container
+reclaimPolicy: Retain  # If set as "Delete" container would be removed after pvc deletion
+volumeBindingMode: Immediate
+
+
+# rishabh@Azure:~/static$ kubectl create -f sc.yaml
+storageclass.storage.k8s.io/blob created
+```
+
+##### Create PVC using the above SC
+
+```bash
+#rishabh@Azure:~/static$ kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/pvc-blob-csi.yaml
+persistentvolumeclaim/pvc-blob created
+```
+
+```yaml
+## Contents of the file:
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-blob
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: blob
+```
+
+The above used container was created on the Portal beforehand:
+
+![image-20210413215923437](docs/image/image-20210413215923437.png)
+
+Check the status of the PVC:
+
+```bash
+
+# rishabh@Azure:~/static$ kubectl describe pvc pvc-blob
+Name:          pvc-blob
+Namespace:     default
+StorageClass:  blob
+Status:        Bound
+Volume:        pvc-64109763-69e5-49ce-bb35-5e993f785649
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+               pv.kubernetes.io/bound-by-controller: yes
+               volume.beta.kubernetes.io/storage-provisioner: blob.csi.azure.com
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      10Gi
+Access Modes:  RWX
+VolumeMode:    Filesystem
+Used By:       <none>
+Events:
+  Type    Reason                 Age   From                                                                                       Message
+  ----    ------                 ----  ----                                                                                       -------
+  Normal  Provisioning           3m8s  blob.csi.azure.com_aks-agentpool-20474252-vmss000000_d3994115-529e-4097-bcd3-04ff49e4fba4  External provisioner is provisioning volume for claim "default/pvc-blob"
+  Normal  ExternalProvisioning   3m8s  persistentvolume-controller                                                                waiting for a volume to be created, either by external provisioner "blob.csi.azure.com" or manually created by system administrator
+  Normal  ProvisioningSucceeded  3m8s  blob.csi.azure.com_aks-agentpool-20474252-vmss000000_d3994115-529e-4097-bcd3-04ff49e4fba4  Successfully provisioned volume pvc-64109763-69e5-49ce-bb35-5e993f785649
+```
+
+##### Create a pod with PVC mount
+
+```bash
+# rishabh@Azure:~/static$ kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/nginx-pod-blob.yaml
+pod/nginx-blob created
+```
+
+``` yaml
+## Contents of the file:
+
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nginx-blob
+spec:
+  nodeSelector:
+    "kubernetes.io/os": linux
+  containers:
+    - image: mcr.microsoft.com/oss/nginx/nginx:1.17.3-alpine
+      name: nginx-blob
+      command:
+        - "/bin/sh"
+        - "-c"
+        - while true; do echo $(date) >> /mnt/blob/outfile; sleep 1; done
+      volumeMounts:
+        - name: blob01
+          mountPath: "/mnt/blob"
+  volumes:
+    - name: blob01
+      persistentVolumeClaim:
+        claimName: pvc-blob
+```
+
+We can see that the new file is being written to the created container:
+
+![image-20210413220607192](docs/image/image-20210413220607192.png)
+
+
+
+##### Deleting the resources:
+
+```bash
+# rishabh@Azure:~/static$ kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/nginx-pod-blob.yaml
+pod "nginx-blob" deleted
+
+
+# rishabh@Azure:~/static$ kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/pvc-blob-csi.yaml
+persistentvolumeclaim "pvc-blob" deleted
+
+
+# rishabh@Azure:~/static$ kubectl delete -f sc.yaml
+storageclass.storage.k8s.io "blob" deleted
+```
+
+---
+
+#### Option 2: Using Secret
+
+##### Create a Secret using Name and Key of Storage Account
+
+```bash
+# rishabh@Azure:~/static$ kubectl create secret generic azure-secret --from-literal azurestorageaccountname=fuse07e249afa8394b9fbfb --from-literal azurestorageaccountkey="xxxxxQLIgNS2uCAU/G3hUmQcdFtfB95C8jhfsxxxxx" --type=Opaque
+secret/azure-secret created
+```
+
+##### Creating a Persistent Volume (PV) with existing Container name in Storage Account
+
+```bash
+# rishabh@Azure:~/static$ cat pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-blob
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain  # "Delete" is not supported in static provisioning
+  csi:
+    driver: blob.csi.azure.com
+    readOnly: false
+    volumeHandle: rishasi-vol-id  # make sure this volumeid is unique in the cluster
+    volumeAttributes:
+      containerName: static-container
+    nodeStageSecretRef:
+      name: azure-secret
+      namespace: default
+
+
+# rishabh@Azure:~/static$ kubectl apply -f pv.yaml
+persistentvolume/pv-blob created
+```
+
+##### Creating a PVC using the above PV
+
+```bash
+# rishabh@Azure:~/static$ kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/pvc-blob-csi-static.yaml
+persistentvolumeclaim/pvc-blob created
+```
+
+```yaml
+## Contents of the file:
+
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-blob
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: pv-blob
+  storageClassName: ""
+```
+
+Make sure that the PVC is in **Bound** state:
+
+```bash
+# rishabh@Azure:~/static$ kubectl describe pvc pvc-blob
+Name:          pvc-blob
+Namespace:     default
+StorageClass:
+Status:        Bound
+Volume:        pv-blob
+Labels:        <none>
+Annotations:   pv.kubernetes.io/bind-completed: yes
+Finalizers:    [kubernetes.io/pvc-protection]
+Capacity:      10Gi
+Access Modes:  RWX
+VolumeMode:    Filesystem
+Used By:       <none>
+Events:        <none>
+```
+
+##### Create a Pod to use the above create PVC:
+
+```bash
+# rishabh@Azure:~/static$ cat pod.yaml
+kind: Pod
+apiVersion: v1
+metadata:
+  name: nginx-blob
+spec:
+  nodeSelector:
+    "kubernetes.io/os": linux
+  containers:
+    - image: mcr.microsoft.com/oss/nginx/nginx:1.17.3-alpine
+      name: nginx-blob
+      command:
+        - "/bin/sh"
+        - "-c"
+        - while true; do echo $(date) >> /mnt/blob/outfile-pv; sleep 1; done
+      volumeMounts:
+        - name: blob01
+          mountPath: "/mnt/blob"
+  volumes:
+    - name: blob01
+      persistentVolumeClaim:
+        claimName: pvc-blob
+
+
+# rishabh@Azure:~/static$ kubectl apply -f pod.yaml
+pod/nginx-blob created
+```
+
+We see the new file being created in the Portal:
+
+![image-20210413222125240](docs/image/image-20210413222125240.png)
+
+
+
+##### Delete the resources:
+
+```bash
+# rishabh@Azure:~/static$ kubectl apply -f pod.yaml
+pod/nginx-blob created
+
+# rishabh@Azure:~/static$ kubectl delete -f pod.yaml
+pod "nginx-blob" deleted
+
+# rishabh@Azure:~/static$ kubectl delete -f https://raw.githubusercontent.com/kubernetes-sigs/blob-csi-driver/master/deploy/example/pvc-blob-csi-static.yaml
+persistentvolumeclaim "pvc-blob" deleted
+
+# rishabh@Azure:~/static$ kubectl delete -f pv.yaml
+persistentvolume "pv-blob" deleted
+
+# rishabh@Azure:~/static$ kubectl delete secret azure-secret
+secret "azure-secret" deleted
+```
+
+---
+
+## Limitations of Blob Storage CSI Driver
+
+- Although Blob CSI Driver allows ReadWriteMany access mode to be used, its functionality is limited by the underlying volume-mounting technology. If azure-storage-fuse is being used to mount a Blob storage container, multiple nodes are allowed to mount the same container, but for just read-only scenarios. It means, you can still use ReadWriteMany mode to claim a volume, but you should carefully avoid writing to one single file from multiple nodes as there will be data corruption. NFSv3, in the contrast, fully supports ReadWriteMany access mode.
+- The azure-storage-fuse method only supports Linux agent nodes.
+- For the Kubernetes clusters that are running on Azure Stack Hub environments, only Standard Locally-redundant (Standard_LRS) and Premium Locally-redundant (Premium_LRS) Storage Account types are supported.
+- The memory consumption of azure-storage-fuse (blobfuse) may be high when large files are being processed. Thus, by default the Blob CSI Driver container has a memory restriction of 2100Mi. This known issue is described in [this ticket](https://github.com/Azure/azure-storage-fuse/issues/454).
+- Restart csi-blobfuse-node daemonset would make current blobfuse mount unavailable. This issue is tracked by [this ticket](https://github.com/kubernetes-sigs/blob-csi-driver/issues/115).
+
+---
+
+## Main Links
+
+#### Main Page: 
+
+https://github.com/kubernetes-sigs/blob-csi-driver#driver-parameters
+
+#### Installation: 
+
+https://github.com/kubernetes-sigs/blob-csi-driver/blob/master/docs/install-csi-driver-master.md
+
+#### Usage:
+
+https://github.com/kubernetes-sigs/blob-csi-driver/blob/master/deploy/example/e2e_usage.md
+
+#### Examples:
+
+https://github.com/kubernetes-sigs/blob-csi-driver/tree/master/deploy/example
+
+#### Troubleshooting:
+
+https://github.com/kubernetes-sigs/blob-csi-driver/blob/master/docs/csi-debug.md
