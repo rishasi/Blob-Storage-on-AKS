@@ -14,7 +14,9 @@ Azure Blob can be mounted onto Pods running inside an AKS Cluster. There are mai
 
 
 
-![image-20210413014205985](docs/image/image-20210413014205985.png)
+![image-20210413131705981](docs/image/image-20210413131705981.png)
+
+
 
 **What are the limitations of FlexVolume?**
 
